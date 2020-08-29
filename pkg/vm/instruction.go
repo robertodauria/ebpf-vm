@@ -16,6 +16,13 @@ import "fmt"
 // 16 bit offset
 // 32 bit immediate (imm)
 //
+// Some instructions can be called with immediates larger than 32 bits.
+// These are provided with subsequent 64-bit words where the opcode, dst, src
+// and offset are all zero.
+// e.g.
+//    opcode  dst+src     offset         immediate
+// 1: [0x7b]  [0x1a]   [0x00 0x01] [0x01 0x02 0x03 0x04]
+// 2: [0x00]  [0x00]   [0x00 0x00] [0x05 0x06 0x07 0x08]
 type Instruction struct {
 	// Opcode is the instruction's opcode.
 	Opcode uint8

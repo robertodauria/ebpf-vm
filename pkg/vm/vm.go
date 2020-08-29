@@ -16,9 +16,63 @@ const (
 // This list of constants defines the opcodes.
 const (
 	// ***********************
+	// Instruction classes
+	// ***********************
+	BPFLD    = 0x00
+	BPFLDX   = 0x01
+	BPFST    = 0x02
+	BPFSTX   = 0x03
+	BPFALU   = 0x04
+	BPFJMP   = 0x05
+	BPFJMP32 = 0x06
+	BPFALU64 = 0x07
+
+	// **********************************************
+	// BPF_ALU/ BPF_JMP source operands
+	// **********************************************
+	BPFK = 0x00 // Use src register as source operand
+	BPFX = 0x08 // Use 32-bit imm as source operand
+
+	// **********************************************
+	// BPF_ALU/BPF_ALU64 instruction codes
+	// **********************************************
+	BPFADD  = 0x00
+	BPFSUB  = 0x10
+	BPFMUL  = 0x20
+	BPFDIV  = 0x30
+	BPFOR   = 0x40
+	BPFAND  = 0x50
+	BPFLSH  = 0x60
+	BPFRSH  = 0x70
+	BPFNEG  = 0x80
+	BPFMOD  = 0x90
+	BPFXOR  = 0xa0
+	BPFMOV  = 0xb0 /* eBPF only: mov reg to reg */
+	BPFARSH = 0xc0 /* eBPF only: sign extending shift right */
+	BPFEND  = 0xd0 /* eBPF only: endianness conversion */
+
+	// **********************************************
+	// BPF_JMP/BPF_JMP32 instruction codes
+	// **********************************************
+	BPFJA   = 0x00 /* BPF_JMP only */
+	BPFJEQ  = 0x10
+	BPFJGT  = 0x20
+	BPFJGE  = 0x30
+	BPFJSET = 0x40
+	BPFJNE  = 0x50 /* eBPF only: jump != */
+	BPFJSGT = 0x60 /* eBPF only: signed '>' */
+	BPFJSGE = 0x70 /* eBPF only: signed '>=' */
+	BPFCALL = 0x80 /* eBPF BPF_JMP only: function call */
+	BPFEXIT = 0x90 /* eBPF BPF_JMP only: function return */
+	BPFJLT  = 0xa0 /* eBPF only: unsigned '<' */
+	BPFJLE  = 0xb0 /* eBPF only: unsigned '<=' */
+	BPFJSLT = 0xc0 /* eBPF only: signed '<' */
+	BPFJSLE = 0xd0 /* eBPF only: signed '<=' */
+
+	// ***********************
 	//  ALU instructions
 	// ***********************
-	OpcodeADDIMM = 0x07
+	OpcodeADDIMM = BPFADD | BPFK | BPFALU64 // 0x07
 	OpcodeADDSRC = 0x0f
 	OpcodeSUBIMM = 0x17
 	OpcodeSUBSRC = 0x1f
@@ -39,21 +93,15 @@ const (
 	// ***********************
 	// Byteswap instructions
 	// ***********************
-	// These are just two opcodes, but they can be called with 16, 32 or
-	// 64-bit immediate values.
 	//
-	// Note: by observing the output of LLVM, it seems that immediate values
-	// larger than 16 bits are provided with subsequent 64-bit words where the
-	// opcode, dst, src and offset are all zero.
-	// e.g.
-	//    opcode  dst+src     offset         immediate
-	// 1: [0xd4]  [0x10]   [0x00 0x00] [0x01 0x02 0x03 0x04]
-	// 2: [0x00]  [0x00]   [0x00 0x00] [0x05 0x06 0x07 0x08]
-	//
-	// The above instructions would execute LE with a 32-bit immediate and R1
-	// as the destination register.
-	// There is no way to know the immediate's size in advance, thus the vm
-	// must allow for continuation of a LE or BE instruction.
+	// Opcode	Mnemonic	           Pseudocode
+	// 0xd4   (imm == 16)	le16 dst	dst = htole16(dst)
+	// 0xd4   (imm == 32)	le32 dst	dst = htole32(dst)
+	// 0xd4   (imm == 64)	le64 dst	dst = htole64(dst)
+	// 0xdc   (imm == 16)	be16 dst	dst = htobe16(dst)
+	// 0xdc   (imm == 32)	be32 dst	dst = htobe32(dst)
+	// 0xdc   (imm == 64)	be64 dst	dst = htobe64(dst)
+
 	OpcodeLE = 0xd4
 	OpcodeBE = 0xdc
 
