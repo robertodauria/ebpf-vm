@@ -94,7 +94,7 @@ const (
 	// Byteswap instructions
 	// ***********************
 	//
-	// Opcode	Mnemonic	           Pseudocode
+	// Opcode	            Mnemonic	   Pseudocode
 	// 0xd4   (imm == 16)	le16 dst	dst = htole16(dst)
 	// 0xd4   (imm == 32)	le32 dst	dst = htole32(dst)
 	// 0xd4   (imm == 64)	le64 dst	dst = htole64(dst)
