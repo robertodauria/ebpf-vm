@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
+	"flag"
 	"io/ioutil"
 	"log"
 
@@ -11,57 +11,79 @@ import (
 	"github.com/yalue/elf_reader"
 )
 
+var (
+	flagFilename   = flag.String("filename", "", "Path to the .o file")
+	flagSection    = flag.String("section", "", "ELF section to execute")
+	flagEndianness = flag.Bool("be", false, "Big Endian")
+	flagVerbose    = flag.Bool("v", false, "Be verbose")
+
+	// XXX: endianness should be inferred from the ELF file.
+	endianness binary.ByteOrder
+)
+
 func main() {
-	raw, e := ioutil.ReadFile("call.o")
-	if e != nil {
-		fmt.Printf("Failed reading /bin/bash: %s\n", e)
-		return
+	flag.Parse()
+	if *flagFilename == "" || *flagSection == "" {
+		log.Fatal("Please, specify -filename and -section")
 	}
-	elf, e := elf_reader.ParseELFFile(raw)
-	if e != nil {
-		fmt.Printf("Failed parsing ELF file: %s\n", e)
-		return
-	}
-
-	fmt.Println(elf.GetSectionName(2))
-	program, err := elf.GetSectionContent(2)
-
+	raw, err := ioutil.ReadFile(*flagFilename)
 	if err != nil {
-		fmt.Printf("Failed reading .text: %s\n", err)
+		log.Fatal(err)
 	}
 
-	// Read all the instructions.
-	var instructions = make([]*vm.Instruction, 0, len(program)/8)
+	if *flagEndianness {
+		endianness = binary.BigEndian
+	} else {
+		endianness = binary.LittleEndian
+	}
 
-	pbuffer := bytes.NewBuffer(program)
-	for pbuffer.Len() > 0 {
-		instr := &vm.Instruction{}
-		instrBytes := pbuffer.Next(8)
-		err := binary.Read(bytes.NewReader(instrBytes), binary.LittleEndian, instr)
+	elf, err := elf_reader.ParseELFFile(raw)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var found bool
+	machine := new(vm.VM)
+	machine.Endianness = endianness
+
+	// Find the ELF section containing eBPF code.
+	// This is not a fixed name, but depends on the kernel hook BPF code must
+	// be attached to.
+	for i := uint16(1); i < elf.GetSectionCount(); i++ {
+		name, err := elf.GetSectionName(i)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if name != *flagSection {
+			continue
+		}
+
+		found = true
+		program, err := elf.GetSectionContent(i)
 		if err != nil {
 			log.Fatal(err)
 		}
 
-		fmt.Printf("Decoded instruction: %+v\n", instr)
-		instructions = append(instructions, instr)
+		machine.Load(bytes.NewReader(program))
 	}
 
-	machine := new(vm.VM)
-	machine.Instr = instructions
+	if !found {
+		log.Fatalf("Cannot find section %s", *flagSection)
+	}
 
-	// Fetch/Execute loop.
 	for {
-		instr, err := machine.Fetch()
+		instruction, err := machine.Fetch()
 		if err != nil {
-			log.Println(err)
-			break
-		}
-		if err = machine.Execute(instr); err != nil {
-			log.Println(err)
-			break
+			log.Fatal(err)
 		}
 
-		machine.Disassemble(instr)
+		if *flagVerbose {
+			machine.Disassemble(instruction)
+		}
+
+		if err := machine.Execute(instruction); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 }
