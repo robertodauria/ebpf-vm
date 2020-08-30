@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 
-	"github.com/robertodauria/ebpf/pkg/vm"
+	"github.com/robertodauria/ebpf-vm/pkg/vm"
 	"github.com/yalue/elf_reader"
 )
 
