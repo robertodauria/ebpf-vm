@@ -69,24 +69,43 @@ const (
 	BPFJSLT = 0xc0 /* eBPF only: signed '<' */
 	BPFJSLE = 0xd0 /* eBPF only: signed '<=' */
 
+	// **********************************************
+	//  Size modifiers for LD/ST instructions
+	// **********************************************
+	BPFW  = 0x00 /* word */
+	BPFH  = 0x08 /* half word */
+	BPFB  = 0x10 /* byte */
+	BPFDW = 0x18 /* eBPF only, double word */
+
+	// **********************************************
+	//  Mode modifiers for LD/ST instructions
+	// **********************************************
+	BPFIMM  = 0x00 /* used for 32-bit mov in classic BPF and 64-bit in eBPF */
+	BPFABS  = 0x20
+	BPFIND  = 0x40
+	BPFMEM  = 0x60
+	BPFLEN  = 0x80 /* classic BPF only, reserved in eBPF */
+	BPFMSH  = 0xa0 /* classic BPF only, reserved in eBPF */
+	BPFXADD = 0xc0 /* eBPF only, exclusive add */
+
 	// ***********************
 	//  ALU instructions
 	// ***********************
-	OpcodeADDIMM = BPFADD | BPFK | BPFALU64 // 0x07
-	OpcodeADDSRC = 0x0f
-	OpcodeSUBIMM = 0x17
-	OpcodeSUBSRC = 0x1f
+	OpcodeADDIMM = BPFALU64 | BPFADD | BPFK // 0x07
+	OpcodeADDSRC = BPFALU64 | BPFADD | BPFX // 0x0f
+	OpcodeSUBIMM = BPFALU64 | BPFSUB | BPFK // 0x17
+	OpcodeSUBSRC = BPFALU64 | BPFSUB | BPFX // 0x1f
 
 	// TODO: a bunch of instructions.
 
-	OpcodeLSHIMM  = 0x67
-	OpcodeLSHSRC  = 0x6f
-	OpcodeRSHIMM  = 0x77
-	OpcodeRSHSRC  = 0x7f
-	OpcodeARSHIMM = 0xc7
+	OpcodeLSHIMM  = BPFALU64 | BPFLSH | BPFK  // 0x67
+	OpcodeLSHSRC  = BPFALU64 | BPFLSH | BPFX  // 0x6f
+	OpcodeRSHIMM  = BPFALU64 | BPFRSH | BPFK  // 0x77
+	OpcodeRSHSRC  = BPFALU64 | BPFRSH | BPFX  // 0x7f
+	OpcodeARSHIMM = BPFALU64 | BPFARSH | BPFK // 0xc7
 
-	OpcodeMOVDSTIMM = 0xb7
-	OpcodeMOVDSTSRC = 0xbf
+	OpcodeMOVDSTIMM = BPFALU64 | BPFMOV | BPFK // 0xb7
+	OpcodeMOVDSTSRC = BPFALU64 | BPFMOV | BPFX // 0xbf
 
 	// TODO: 32-bit instructions.
 
@@ -102,8 +121,8 @@ const (
 	// 0xdc   (imm == 32)	be32 dst	dst = htobe32(dst)
 	// 0xdc   (imm == 64)	be64 dst	dst = htobe64(dst)
 
-	OpcodeLE = 0xd4
-	OpcodeBE = 0xdc
+	OpcodeLE = BPFALU | BPFEND | BPFK // 0xd4
+	OpcodeBE = BPFALU | BPFEND | BPFX // 0xdc
 
 	// ***********************
 	// Memory instructions
@@ -112,30 +131,30 @@ const (
 	// OpcodeLDDW extends into the next instruction as it loads a 64-bit word
 	// while the immediate can only contain 32 bits.
 	// The next instruction will have opcode, dst/src and offset set to zero.
-	OpcodeLDDW = 0x18
+	OpcodeLDDW = BPFLD | BPFDW | BPFIMM //  0x18
 
 	// See kernel documentation for the following.
-	OpcodeLDABSW  = 0x20
-	OpcodeLDABSH  = 0x28
-	OpcodeLDABSB  = 0x30
-	OpcodeLDABSDW = 0x38
-	OpcodeLDINDW  = 0x40
-	OpcodeLDINDH  = 0x48
-	OpcodeLDINDB  = 0x50
-	OpcodeLDINDDW = 0x58
+	OpcodeLDABSW  = BPFLD | BPFW | BPFABS  // 0x20
+	OpcodeLDABSH  = BPFLD | BPFH | BPFABS  // 0x28
+	OpcodeLDABSB  = BPFLD | BPFB | BPFABS  // 0x30
+	OpcodeLDABSDW = BPFLD | BPFDW | BPFABS // 0x38
+	OpcodeLDINDW  = BPFLD | BPFW | BPFIND  // 0x40
+	OpcodeLDINDH  = BPFLD | BPFH | BPFIND  // 0x48
+	OpcodeLDINDB  = BPFLD | BPFB | BPFIND  // 0x50
+	OpcodeLDINDDW = BPFLD | BPFDW | BPFIND // 0x58
 
-	OpcodeLDXW  = 0x61
-	OpcodeLDXH  = 0x69
-	OpcodeLDXB  = 0x71
-	OpcodeLDXDW = 0x79
-	OpcodeSTW   = 0x62
-	OpcodeSTH   = 0x6a
-	OpcodeSTB   = 0x72
-	OpcodeSTDW  = 0x7a
-	OpcodeSTXW  = 0x63
-	OpcodeSTXH  = 0x6b
-	OpcodeSTXB  = 0x73
-	OpcodeSTXDW = 0x7b
+	OpcodeLDXW  = BPFLDX | BPFW | BPFMEM  // 0x61
+	OpcodeLDXH  = BPFLDX | BPFH | BPFMEM  // 0x69
+	OpcodeLDXB  = BPFLDX | BPFB | BPFMEM  // 0x71
+	OpcodeLDXDW = BPFLDX | BPFDW | BPFMEM // 0x79
+	OpcodeSTW   = BPFST | BPFW | BPFMEM   // 0x62
+	OpcodeSTH   = BPFST | BPFH | BPFMEM   // 0x6a
+	OpcodeSTB   = BPFST | BPFB | BPFMEM   // 0x72
+	OpcodeSTDW  = BPFST | BPFDW | BPFMEM  // 0x7a
+	OpcodeSTXW  = BPFSTX | BPFW | BPFMEM  // 0x63
+	OpcodeSTXH  = BPFSTX | BPFH | BPFMEM  // 0x6b
+	OpcodeSTXB  = BPFSTX | BPFB | BPFMEM  // 0x73
+	OpcodeSTXDW = BPFSTX | BPFDW | BPFMEM // 0x7b
 
 	// ***********************
 	// Branch instructions
