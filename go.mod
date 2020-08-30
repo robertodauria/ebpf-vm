@@ -1,4 +1,4 @@
-module github.com/robertodauria/ebpf
+module github.com/robertodauria/ebpf-vm
 
 go 1.14
 
